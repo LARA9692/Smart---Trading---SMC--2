@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -26,106 +25,303 @@ h1, h2, h3 {
 """, unsafe_allow_html=True)
 
 st.title("📊 SMART TRADING SMC 2.0")
-st.caption("Gold XAUUSD | Analyse pédagogique SMC & Wyckoff")
+st.caption("GOLD XAUUSD | Analyse pédagogique SMC & Wyckoff")
 
 st.sidebar.header("PARAMÈTRES")
 
-instrument = "GOLD (XAUUSD)"
+timeframes = ["H4", "H1", "M15", "M5"]
 
-timeframe = st.sidebar.selectbox(
-    "Unité de temps",
-    ["H4", "H1", "M15", "M5"]
+selected_tf = st.sidebar.selectbox(
+    "Unité à afficher",
+    timeframes
 )
 
-st.sidebar.success("Instrument : GOLD")
+st.sidebar.success("Instrument : GOLD XAUUSD")
 
-st.sidebar.info(
-    "Importe les données OHLC de ton graphique "
-    "pour effectuer une analyse."
+st.info(
+    "Importe un fichier CSV distinct pour chaque unité de temps. "
+    "Tu peux aussi commencer avec une seule unité."
 )
 
-uploaded = st.file_uploader(
-    "Importer les données Gold (CSV)",
-    type=["csv"]
-)
+# IMPORTATION DES DONNÉES
 
-def demo_data():
-    np.random.seed(42)
-    n = 250
-    close = 2650 + np.cumsum(np.random.normal(0, 2, n))
-    open_price = np.r_[close[0], close[:-1]]
-    high = np.maximum(open_price, close) + np.random.uniform(0.2, 2, n)
-    low = np.minimum(open_price, close) - np.random.uniform(0.2, 2, n)
+uploaded_files = {}
 
-    return pd.DataFrame({
-        "datetime": pd.date_range(
-            end=pd.Timestamp.now(),
-            periods=n,
-            freq="h"
-        ),
-        "open": open_price,
-        "high": high,
-        "low": low,
-        "close": close,
-        "volume": np.random.randint(100, 1000, n)
-    })
+st.subheader("1. Importation des données OHLC")
 
-if "demo" not in st.session_state:
-    st.session_state.demo = False
+col1, col2 = st.columns(2)
 
-if st.button("Charger des données de démonstration"):
-    st.session_state.demo = True
+with col1:
+    uploaded_files["H4"] = st.file_uploader(
+        "Importer les données H4",
+        type=["csv"],
+        key="file_h4"
+    )
 
-if uploaded is not None:
-    st.session_state.demo = False
+    uploaded_files["H1"] = st.file_uploader(
+        "Importer les données H1",
+        type=["csv"],
+        key="file_h1"
+    )
 
-df = None
+with col2:
+    uploaded_files["M15"] = st.file_uploader(
+        "Importer les données M15",
+        type=["csv"],
+        key="file_m15"
+    )
 
-if uploaded is not None:
-    try:
-        df = pd.read_csv(uploaded)
-        df.columns = df.columns.str.lower().str.strip()
+    uploaded_files["M5"] = st.file_uploader(
+        "Importer les données M5",
+        type=["csv"],
+        key="file_m5"
+    )
 
-        if "datetime" not in df.columns:
-            if "date" in df.columns:
-                df = df.rename(columns={"date": "datetime"})
-            elif "time" in df.columns:
-                df = df.rename(columns={"time": "datetime"})
 
-        required = [
-            "datetime", "open", "high", "low", "close"
-        ]
+def load_data(file):
+    df = pd.read_csv(file)
+    df.columns = df.columns.str.lower().str.strip()
 
-        if not all(c in df.columns for c in required):
-            st.error("Colonnes requises : datetime, open, high, low, close")
-            df = None
-        else:
-            df["datetime"] = pd.to_datetime(
-                df["datetime"], errors="coerce"
-            )
-            for col in ["open", "high", "low", "close"]:
-                df[col] = pd.to_numeric(
-                    df[col], errors="coerce"
-                )
-            df = df.dropna(subset=required)
-            df = df.sort_values("datetime").reset_index(drop=True)
+    rename = {
+        "date": "datetime",
+        "time": "datetime",
+        "timestamp": "datetime"
+    }
 
-    except Exception as e:
-        st.error(f"Erreur de lecture du fichier : {e}")
-        df = None
+    df = df.rename(columns=rename)
 
-elif st.session_state.demo:
-    df = demo_data()
-    st.warning("Données fictives : démonstration uniquement.")
+    required = [
+        "datetime", "open", "high", "low", "close"
+    ]
 
-if df is not None:
+    if not all(c in df.columns for c in required):
+        raise ValueError(
+            "Colonnes nécessaires : datetime, open, high, low, close"
+        )
+
+    df["datetime"] = pd.to_datetime(
+        df["datetime"], errors="coerce"
+    )
+
+    for col in ["open", "high", "low", "close"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df = df.dropna(subset=required)
+    df = df.sort_values("datetime").reset_index(drop=True)
 
     if len(df) < 15:
-        st.error("Il faut au moins 15 chandeliers.")
-        st.stop()
+        raise ValueError(
+            "Il faut au moins 15 chandeliers valides."
+        )
 
-    st.divider()
-    st.subheader("1. Graphique du Gold")
+    return df
+
+
+data = {}
+errors = {}
+
+for tf, file in uploaded_files.items():
+    if file is not None:
+        try:
+            data[tf] = load_data(file)
+        except Exception as e:
+            errors[tf] = str(e)
+
+for tf, error in errors.items():
+    st.error(f"Erreur {tf} : {error}")
+
+
+# FONCTIONS D'ANALYSE
+
+def analyze_market(df):
+
+    result = {}
+
+    last = df.iloc[-1]
+
+    result["price"] = float(last["close"])
+
+    result["high_liquidity"] = float(
+        df.tail(30)["high"].max()
+    )
+
+    result["low_liquidity"] = float(
+        df.tail(30)["low"].min()
+    )
+
+    # Sommets et creux
+    df["swing_high"] = (
+        df["high"] ==
+        df["high"].rolling(11, center=True).max()
+    )
+
+    df["swing_low"] = (
+        df["low"] ==
+        df["low"].rolling(11, center=True).min()
+    )
+
+    highs = df.loc[df["swing_high"], "high"]
+    lows = df.loc[df["swing_low"], "low"]
+
+    result["resistance"] = (
+        float(highs.iloc[-1])
+        if len(highs) else float(df["high"].max())
+    )
+
+    result["support"] = (
+        float(lows.iloc[-1])
+        if len(lows) else float(df["low"].min())
+    )
+
+    # Tendance EMA
+    ema20 = df["close"].ewm(span=20).mean().iloc[-1]
+    ema50 = df["close"].ewm(span=50).mean().iloc[-1]
+
+    if ema20 > ema50:
+        result["trend"] = "Orientation haussière"
+    elif ema20 < ema50:
+        result["trend"] = "Orientation baissière"
+    else:
+        result["trend"] = "Orientation neutre"
+
+    # FVG
+    fvg = []
+
+    for i in range(2, len(df)):
+        if df.iloc[i]["low"] > df.iloc[i-2]["high"]:
+            fvg.append({
+                "Type": "FVG haussier",
+                "Bas": df.iloc[i-2]["high"],
+                "Haut": df.iloc[i]["low"],
+                "Date": df.iloc[i]["datetime"]
+            })
+
+        elif df.iloc[i]["high"] < df.iloc[i-2]["low"]:
+            fvg.append({
+                "Type": "FVG baissier",
+                "Bas": df.iloc[i]["high"],
+                "Haut": df.iloc[i-2]["low"],
+                "Date": df.iloc[i]["datetime"]
+            })
+
+    result["fvg"] = fvg
+
+    # Order Blocks indicatifs
+    obs = []
+
+    for i in range(1, len(df)):
+        previous = df.iloc[i-1]
+        current = df.iloc[i]
+
+        if (
+            current["close"] > previous["high"]
+            and previous["close"] < previous["open"]
+        ):
+            obs.append({
+                "Type": "OB haussier potentiel",
+                "Bas": previous["low"],
+                "Haut": previous["open"],
+                "Date": previous["datetime"]
+            })
+
+        elif (
+            current["close"] < previous["low"]
+            and previous["close"] > previous["open"]
+        ):
+            obs.append({
+                "Type": "OB baissier potentiel",
+                "Bas": previous["open"],
+                "Haut": previous["high"],
+                "Date": previous["datetime"]
+            })
+
+    result["obs"] = obs
+
+    # Observations de liquidité / Wyckoff
+    previous = df.iloc[-2]
+
+    result["spring"] = (
+        last["low"] < previous["low"]
+        and last["close"] > previous["low"]
+    )
+
+    result["utad"] = (
+        last["high"] > previous["high"]
+        and last["close"] < previous["high"]
+    )
+
+    return result
+
+
+# TABLEAU MULTI-UNITÉS
+
+st.divider()
+st.subheader("2. Tableau de bord multi-unités")
+
+if data:
+
+    rows = []
+
+    for tf in timeframes:
+        if tf in data:
+            analysis = analyze_market(data[tf])
+
+            rows.append({
+                "Unité": tf,
+                "Dernier prix": round(analysis["price"], 2),
+                "Orientation": analysis["trend"],
+                "Support": round(analysis["support"], 2),
+                "Résistance": round(analysis["resistance"], 2),
+                "FVG détectés": len(analysis["fvg"]),
+                "OB potentiels": len(analysis["obs"])
+            })
+
+    st.dataframe(
+        pd.DataFrame(rows),
+        use_container_width=True,
+        hide_index=True
+    )
+
+else:
+    st.warning(
+        "Aucune donnée chargée. Importe au moins un fichier CSV."
+    )
+
+
+# ANALYSE DE L'UNITÉ SÉLECTIONNÉE
+
+st.divider()
+st.subheader("3. Analyse détaillée")
+
+if selected_tf in data:
+
+    df = data[selected_tf].copy()
+    analysis = analyze_market(df)
+
+    st.write("Unité analysée :", selected_tf)
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric(
+        "Dernier prix",
+        f"{analysis['price']:.2f}"
+    )
+
+    col2.metric(
+        "Support indicatif",
+        f"{analysis['support']:.2f}"
+    )
+
+    col3.metric(
+        "Résistance indicative",
+        f"{analysis['resistance']:.2f}"
+    )
+
+    st.info(analysis["trend"])
+
+    # Graphique
+
+    st.subheader("4. Graphique du Gold")
 
     df["EMA20"] = df["close"].ewm(span=20).mean()
     df["EMA50"] = df["close"].ewm(span=50).mean()
@@ -163,137 +359,54 @@ if df is not None:
         xaxis_rangeslider_visible=False
     )
 
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.subheader("2. Structure du marché")
-
-    window = 5
-
-    df["Swing_High"] = (
-        df["high"] == df["high"].rolling(
-            window * 2 + 1, center=True
-        ).max()
+    st.plotly_chart(
+        fig,
+        use_container_width=True
     )
 
-    df["Swing_Low"] = (
-        df["low"] == df["low"].rolling(
-            window * 2 + 1, center=True
-        ).min()
-    )
+    # FVG
 
-    highs = df.loc[df["Swing_High"], "high"]
-    lows = df.loc[df["Swing_Low"], "low"]
+    st.subheader("5. Détection des FVG")
 
-    last = df.iloc[-1]
-
-    if len(highs) > 0 and len(lows) > 0:
-        resistance = highs.iloc[-1]
-        support = lows.iloc[-1]
-
-        st.metric("Dernier prix", f"{last['close']:.2f}")
-        st.metric("Dernier sommet identifié", f"{resistance:.2f}")
-        st.metric("Dernier creux identifié", f"{support:.2f}")
-
-        if last["close"] > resistance:
-            structure = "Cassure haussière possible (BOS)"
-        elif last["close"] < support:
-            structure = "Cassure baissière possible (BOS)"
-        else:
-            structure = "Prix entre les derniers swings"
-
-        st.info(structure)
-    else:
-        support = df["low"].min()
-        resistance = df["high"].max()
-        st.info("Structure insuffisamment confirmée.")
-
-    st.subheader("3. Détection indicative des FVG")
-
-    fvg_list = []
-
-    for i in range(2, len(df)):
-        if df.iloc[i]["low"] > df.iloc[i-2]["high"]:
-            fvg_list.append({
-                "Type": "FVG haussier",
-                "Bas": df.iloc[i-2]["high"],
-                "Haut": df.iloc[i]["low"]
-            })
-
-        elif df.iloc[i]["high"] < df.iloc[i-2]["low"]:
-            fvg_list.append({
-                "Type": "FVG baissier",
-                "Bas": df.iloc[i]["high"],
-                "Haut": df.iloc[i-2]["low"]
-            })
-
-    if fvg_list:
+    if analysis["fvg"]:
         st.dataframe(
-            pd.DataFrame(fvg_list[-10:]),
-            use_container_width=True
+            pd.DataFrame(analysis["fvg"][-10:]),
+            use_container_width=True,
+            hide_index=True
         )
     else:
         st.write("Aucun FVG détecté.")
 
-    st.subheader("4. Order Blocks indicatifs")
+    # ORDER BLOCKS
 
-    ob_list = []
+    st.subheader("6. Order Blocks")
 
-    for i in range(2, len(df)):
-        previous = df.iloc[i-1]
-        current = df.iloc[i]
-
-        if current["close"] > previous["high"] and previous["close"] < previous["open"]:
-            ob_list.append({
-                "Type": "OB haussier potentiel",
-                "Bas": previous["low"],
-                "Haut": previous["open"]
-            })
-
-        elif current["close"] < previous["low"] and previous["close"] > previous["open"]:
-            ob_list.append({
-                "Type": "OB baissier potentiel",
-                "Bas": previous["open"],
-                "Haut": previous["high"]
-            })
-
-    if ob_list:
+    if analysis["obs"]:
         st.dataframe(
-            pd.DataFrame(ob_list[-10:]),
-            use_container_width=True
+            pd.DataFrame(analysis["obs"][-10:]),
+            use_container_width=True,
+            hide_index=True
         )
     else:
         st.write("Aucun OB potentiel détecté.")
 
-    st.subheader("5. Analyse de liquidité")
+    # LIQUIDITÉ
 
-    recent = df.tail(30)
+    st.subheader("7. Analyse de liquidité")
 
     st.write(
         "Liquidité haute indicative :",
-        round(recent["high"].max(), 2)
+        round(analysis["high_liquidity"], 2)
     )
 
     st.write(
         "Liquidité basse indicative :",
-        round(recent["low"].min(), 2)
+        round(analysis["low_liquidity"], 2)
     )
 
-    st.caption(
-        "Les niveaux de liquidité sont des extrêmes récents, "
-        "pas des preuves de présence d'ordres institutionnels."
-    )
+    # WYCKOFF
 
-    st.subheader("6. Observations Wyckoff")
-
-    spring = (
-        (df["low"] < df["low"].shift(1)) &
-        (df["close"] > df["low"].shift(1))
-    )
-
-    utad = (
-        (df["high"] > df["high"].shift(1)) &
-        (df["close"] < df["high"].shift(1))
-    )
+    st.subheader("8. Observations Wyckoff")
 
     col1, col2 = st.columns(2)
 
@@ -301,7 +414,7 @@ if df is not None:
         st.write("Spring :")
         st.write(
             "Observation possible"
-            if spring.iloc[-1]
+            if analysis["spring"]
             else "Non détecté sur la dernière bougie"
         )
 
@@ -309,41 +422,53 @@ if df is not None:
         st.write("UTAD :")
         st.write(
             "Observation possible"
-            if utad.iloc[-1]
+            if analysis["utad"]
             else "Non détecté sur la dernière bougie"
         )
 
-    st.subheader("7. Synthèse multi-unités")
+    # BOS / CHOCH : observations simples
 
-    st.write("Unité analysée :", timeframe)
+    st.subheader("9. Structure et cassures")
 
-    st.write("""
-    Pour une analyse multi-unités complète :
-
-    - H4 : structure générale.
-    - H1 : zones de travail.
-    - M15 : recherche de confirmations.
-    - M5 : observation des réactions.
-    """)
-
-    st.subheader("8. Conclusion pédagogique")
-
-    st.info("""
-    Cette application identifie des configurations techniques
-    indicatives. Elle ne confirme pas automatiquement une entrée.
-
-    Une cassure doit être étudiée avec son contexte, la liquidité,
-    la clôture des bougies et la réaction du prix.
-
-    Les données importées doivent correspondre à l'unité de temps
-    sélectionnée.
-    """)
+    if analysis["price"] > analysis["resistance"]:
+        st.success("Cassure haussière potentielle à examiner.")
+    elif analysis["price"] < analysis["support"]:
+        st.warning("Cassure baissière potentielle à examiner.")
+    else:
+        st.info("Prix entre les derniers niveaux identifiés.")
 
 else:
     st.info(
-        "Bienvenue dans Smart Trading SMC 2.0. "
-        "Importe un fichier CSV ou charge les données de démonstration."
+        f"Importe les données {selected_tf} pour afficher "
+        "son analyse détaillée."
     )
 
+
+# SYNTHÈSE
+
 st.divider()
-st.caption("SMART TRADING SMC 2.0 | Outil pédagogique d'analyse")
+st.subheader("10. Méthode de travail")
+
+st.markdown("""
+- **H4 :** déterminer la structure générale.
+- **H1 :** repérer les zones de travail.
+- **M15 :** rechercher les confirmations.
+- **M5 :** examiner les réactions et les confirmations finales.
+
+Une analyse sérieuse doit combiner la structure, la liquidité,
+les zones OB/FVG et les confirmations de prix.
+""")
+
+st.warning("""
+Les détections sont indicatives et doivent être vérifiées.
+Les Spring, UTAD, BOS, CHOCH et OB ne sont pas tous confirmés
+automatiquement par cette version. Les données doivent être
+réelles et correctement exportées depuis le graphique.
+
+Cette application est un outil pédagogique, pas un générateur
+de signaux garantis.
+""")
+
+st.caption(
+    "SMART TRADING SMC 2.0 | GOLD XAUUSD"
+)
