@@ -127,6 +127,9 @@ for tf, file in uploaded_files.items():
         except Exception as e:
             errors[tf] = str(e)
 
+for tf, df in data.items():
+    st.success(f"{tf} : {len(df)} chandeliers chargés")
+
 for tf, error in errors.items():
     st.error(f"Erreur {tf} : {error}")
 
