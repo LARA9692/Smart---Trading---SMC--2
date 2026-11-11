@@ -215,6 +215,53 @@ if selected_tf in data:
             col=1
         )
 
+    # DETECTION PEDAGOGIQUE DES ORDER BLOCKS
+
+    ob_zones = []
+
+    for i, price, event in structure_events:
+        if "haussier" in event:
+            for j in range(i - 1, max(-1, i - 6), -1):
+                if chart_df["close"].iloc[j] < chart_df["open"].iloc[j]:
+                    ob_zones.append({
+                        "type": "OB haussier",
+                        "start": chart_df["datetime"].iloc[j],
+                        "end": chart_df["datetime"].iloc[-1],
+                        "high": chart_df["high"].iloc[j],
+                        "low": chart_df["low"].iloc[j]
+                    })
+                    break
+
+        elif "baissier" in event:
+            for j in range(i - 1, max(-1, i - 6), -1):
+                if chart_df["close"].iloc[j] > chart_df["open"].iloc[j]:
+                    ob_zones.append({
+                        "type": "OB baissier",
+                        "start": chart_df["datetime"].iloc[j],
+                        "end": chart_df["datetime"].iloc[-1],
+                        "high": chart_df["high"].iloc[j],
+                        "low": chart_df["low"].iloc[j]
+                    })
+                    break
+
+    for ob in ob_zones:
+        fig.add_shape(
+            type="rect",
+            x0=ob["start"],
+            x1=ob["end"],
+            y0=ob["low"],
+            y1=ob["high"],
+            fillcolor="rgba(0, 180, 100, 0.15)"
+            if ob["type"] == "OB haussier"
+            else "rgba(255, 70, 70, 0.15)",
+            line=dict(
+                color="lime" if ob["type"] == "OB haussier" else "red",
+                width=1
+            ),
+            row=1,
+            col=1
+        )
+
     if "volume" in chart_df.columns:
         fig.add_trace(
             go.Bar(
