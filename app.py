@@ -192,14 +192,18 @@ if selected_tf in data:
 
     for i, price, event in structure_events:
         bullish = "haussier" in event
-
+        if "BOS" in event:
+            marker_color = "lime" if bullish else "red"
+        else:
+            marker_color = "cyan" if bullish else "orange"
         fig.add_trace(
             go.Scatter(
                 x=[chart_df["datetime"].iloc[i]],
                 y=[price],
                 mode="markers+text",
-                marker=dict(
-                    size=11,
+                                marker=dict(
+                    size=12,
+                    color=marker_color,
                     symbol="triangle-up" if bullish else "triangle-down"
                 ),
                 text=[event],
