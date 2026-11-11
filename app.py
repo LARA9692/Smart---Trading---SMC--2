@@ -164,6 +164,53 @@ if selected_tf in data:
         col=1
     )
 
+    # DETECTION PEDAGOGIQUE BOS / CHOCH
+
+    structure_events = []
+    trend = 0
+    lookback = 5
+
+    for i in range(lookback, len(chart_df)):
+        previous_high = chart_df["high"].iloc[i-lookback:i].max()
+        previous_low = chart_df["low"].iloc[i-lookback:i].min()
+
+        current_close = chart_df["close"].iloc[i]
+
+        if current_close > previous_high:
+            event = "BOS haussier" if trend >= 0 else "CHOCH haussier"
+            trend = 1
+            structure_events.append(
+                (i, current_close, event)
+            )
+
+        elif current_close < previous_low:
+            event = "BOS baissier" if trend <= 0 else "CHOCH baissier"
+            trend = -1
+            structure_events.append(
+                (i, current_close, event)
+            )
+
+    for i, price, event in structure_events:
+        bullish = "haussier" in event
+
+        fig.add_trace(
+            go.Scatter(
+                x=[chart_df["datetime"].iloc[i]],
+                y=[price],
+                mode="markers+text",
+                marker=dict(
+                    size=11,
+                    symbol="triangle-up" if bullish else "triangle-down"
+                ),
+                text=[event],
+                textposition="top center" if bullish else "bottom center",
+                name=event,
+                showlegend=True
+            ),
+            row=1,
+            col=1
+        )
+
     if "volume" in chart_df.columns:
         fig.add_trace(
             go.Bar(
