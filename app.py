@@ -134,43 +134,67 @@ for tf, error in errors.items():
     st.error(f"Erreur {tf} : {error}")
 
 
+  
 # GRAPHIQUE INTERACTIF
 
 st.divider()
-st.subheader("2. Graphique en chandeliers")
+st.subheader("2. Graphique en chandeliers et volume")
 
 if selected_tf in data:
     chart_df = data[selected_tf]
 
-    fig = go.Figure()
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.04,
+        row_heights=[0.75, 0.25]
+    )
 
-    fig.add_trace(go.Candlestick(
-        x=chart_df["datetime"],
-        open=chart_df["open"],
-        high=chart_df["high"],
-        low=chart_df["low"],
-        close=chart_df["close"],
-        name=selected_tf
-    ))
+    fig.add_trace(
+        go.Candlestick(
+            x=chart_df["datetime"],
+            open=chart_df["open"],
+            high=chart_df["high"],
+            low=chart_df["low"],
+            close=chart_df["close"],
+            name=selected_tf
+        ),
+        row=1,
+        col=1
+    )
+
+    if "volume" in chart_df.columns:
+        fig.add_trace(
+            go.Bar(
+                x=chart_df["datetime"],
+                y=chart_df["volume"],
+                name="Volume"
+            ),
+            row=2,
+            col=1
+        )
+    else:
+        st.warning("Aucune colonne Volume détectée.")
 
     fig.update_layout(
         title=f"GOLD XAUUSD - {selected_tf}",
         template="plotly_dark",
-        height=600,
-        xaxis_title="Date",
-        yaxis_title="Prix",
+        height=700,
         xaxis_rangeslider_visible=False
     )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
+    fig.update_yaxes(title_text="Prix", row=1, col=1)
+    fig.update_yaxes(title_text="Volume", row=2, col=1)
+
+    st.plotly_chart(fig, use_container_width=True)
+
 else:
     st.info(
         f"Importe les données {selected_tf} "
         "pour afficher le graphique."
     )
+
 
 # FONCTIONS D'ANALYSE
 
