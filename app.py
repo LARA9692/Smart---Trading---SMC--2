@@ -134,6 +134,44 @@ for tf, error in errors.items():
     st.error(f"Erreur {tf} : {error}")
 
 
+# GRAPHIQUE INTERACTIF
+
+st.divider()
+st.subheader("2. Graphique en chandeliers")
+
+if selected_tf in data:
+    chart_df = data[selected_tf]
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Candlestick(
+        x=chart_df["datetime"],
+        open=chart_df["open"],
+        high=chart_df["high"],
+        low=chart_df["low"],
+        close=chart_df["close"],
+        name=selected_tf
+    ))
+
+    fig.update_layout(
+        title=f"GOLD XAUUSD - {selected_tf}",
+        template="plotly_dark",
+        height=600,
+        xaxis_title="Date",
+        yaxis_title="Prix",
+        xaxis_rangeslider_visible=False
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+else:
+    st.info(
+        f"Importe les données {selected_tf} "
+        "pour afficher le graphique."
+    )
+
 # FONCTIONS D'ANALYSE
 
 def analyze_market(df):
