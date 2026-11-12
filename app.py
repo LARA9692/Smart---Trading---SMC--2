@@ -327,6 +327,24 @@ if selected_tf in data:
     fig.update_yaxes(title_text="Prix", row=1, col=1)
     fig.update_yaxes(title_text="Volume", row=2, col=1)
 
+    # REGLAGE DU NOMBRE DE CHANDELIERS VISIBLES
+
+    visible_candles = st.selectbox(
+        "Nombre de chandeliers à afficher",
+        [150, 200, 300, 500],
+        index=0
+    )
+
+    if len(chart_df) >= visible_candles:
+        fig.update_xaxes(
+            range=[
+                chart_df["datetime"].iloc[-visible_candles],
+                chart_df["datetime"].iloc[-1]
+            ],
+            row=1,
+            col=1
+        )
+
     st.plotly_chart(fig, use_container_width=True)
 
 else:
