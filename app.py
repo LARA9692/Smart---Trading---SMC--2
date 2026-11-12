@@ -341,7 +341,7 @@ if selected_tf in data:
         f"Nombre de chandeliers disponibles : {len(chart_df)}"
     )
 
-    )
+    
 
     if len(chart_df) >=     visible_candles = st.selectbox(
         "Nombre de chandeliers à afficher",
