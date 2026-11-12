@@ -343,7 +343,7 @@ if selected_tf in data:
 
     
 
-    if len(chart_df) >=     visible_candles = st.selectbox(
+        visible_candles = st.selectbox(
         "Nombre de chandeliers à afficher",
         options=[150, 200, 300, 500],
         index=0,
@@ -363,6 +363,8 @@ if selected_tf in data:
             row=1,
             col=1
         )
+
+    st.plotly_chart(fig, use_container_width=True)
 
     st.plotly_chart(fig, use_container_width=True)
 
