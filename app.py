@@ -317,6 +317,8 @@ if selected_tf in data:
     else:
         st.warning("Aucune colonne Volume détectée.")
 
+    
+    
     fig.update_layout(
         title=f"GOLD XAUUSD - {selected_tf}",
         template="plotly_dark",
@@ -324,25 +326,12 @@ if selected_tf in data:
         xaxis_rangeslider_visible=False
     )
 
-        fig.update_yaxes(title_text="Prix", row=1, col=1)
+    fig.update_yaxes(title_text="Prix", row=1, col=1)
     fig.update_yaxes(title_text="Volume", row=2, col=1)
 
     # REGLAGE DU NOMBRE DE CHANDELIERS VISIBLES
 
     visible_candles = st.selectbox(
-        "Nombre de chandeliers à afficher",
-        options=[150, 200, 300, 500],
-        index=0,
-        key="visible_candles_selector"
-    )
-
-    st.write(
-        f"Nombre de chandeliers disponibles : {len(chart_df)}"
-    )
-
-    
-
-        visible_candles = st.selectbox(
         "Nombre de chandeliers à afficher",
         options=[150, 200, 300, 500],
         index=0,
@@ -364,6 +353,8 @@ if selected_tf in data:
         )
 
     st.plotly_chart(fig, use_container_width=True)
+
+    
 
     st.plotly_chart(fig, use_container_width=True)
 
