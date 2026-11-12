@@ -215,52 +215,94 @@ if selected_tf in data:
             col=1
         )
 
-    # DETECTION PEDAGOGIQUE DES ORDER BLOCKS
+    
+    # DETECTION PEDAGOGIQUE DES ORDER BLOCKS AMELIOREE
 
     ob_zones = []
+    seen_ob = set()
 
     for i, price, event in structure_events:
-        if "haussier" in event:
-            for j in range(i - 1, max(-1, i - 6), -1):
-                if chart_df["close"].iloc[j] < chart_df["open"].iloc[j]:
-                    ob_zones.append({
-                        "type": "OB haussier",
-                        "start": chart_df["datetime"].iloc[j],
-                        "end": chart_df["datetime"].iloc[-1],
-                        "high": chart_df["high"].iloc[j],
-                        "low": chart_df["low"].iloc[j]
-                    })
-                    break
 
-        elif "baissier" in event:
-            for j in range(i - 1, max(-1, i - 6), -1):
-                if chart_df["close"].iloc[j] > chart_df["open"].iloc[j]:
+        if "haussier" in event:
+            ob_type = "OB haussier"
+            opposite_candle = (
+                chart_df["close"].iloc[i-1] <
+                chart_df["open"].iloc[i-1]
+            )
+
+        else:
+            ob_type = "OB baissier"
+            opposite_candle = (
+                chart_df["close"].iloc[i-1] >
+                chart_df["open"].iloc[i-1]
+            )
+
+        for j in range(i - 1, max(-1, i - 6), -1):
+
+            if "haussier" in event:
+                condition = (
+                    chart_df["close"].iloc[j] <
+                    chart_df["open"].iloc[j]
+                )
+            else:
+                condition = (
+                    chart_df["close"].iloc[j] >
+                    chart_df["open"].iloc[j]
+                )
+
+            if condition:
+                ob_key = (ob_type, j)
+
+                if ob_key not in seen_ob:
+                    seen_ob.add(ob_key)
+
                     ob_zones.append({
-                        "type": "OB baissier",
+                        "type": ob_type,
                         "start": chart_df["datetime"].iloc[j],
                         "end": chart_df["datetime"].iloc[-1],
                         "high": chart_df["high"].iloc[j],
                         "low": chart_df["low"].iloc[j]
                     })
-                    break
+
+                break
 
     for ob in ob_zones:
+
+        bullish_ob = ob["type"] == "OB haussier"
+
         fig.add_shape(
             type="rect",
             x0=ob["start"],
             x1=ob["end"],
             y0=ob["low"],
             y1=ob["high"],
-            fillcolor="rgba(0, 180, 100, 0.15)"
-            if ob["type"] == "OB haussier"
-            else "rgba(255, 70, 70, 0.15)",
+            fillcolor=(
+                "rgba(0, 200, 100, 0.18)"
+                if bullish_ob
+                else "rgba(255, 60, 60, 0.18)"
+            ),
             line=dict(
-                color="lime" if ob["type"] == "OB haussier" else "red",
-                width=1
+                color="lime" if bullish_ob else "red",
+                width=2
             ),
             row=1,
             col=1
         )
+
+        fig.add_annotation(
+            x=ob["start"],
+            y=ob["high"] if bullish_ob else ob["low"],
+            text=ob["type"],
+            showarrow=False,
+            font=dict(
+                color="lime" if bullish_ob else "red",
+                size=10
+            ),
+            row=1,
+            col=1
+        )
+
+    
 
     if "volume" in chart_df.columns:
         fig.add_trace(
