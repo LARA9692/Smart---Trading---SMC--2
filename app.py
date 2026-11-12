@@ -343,6 +343,17 @@ if selected_tf in data:
 
     )
 
+    if len(chart_df) >=     visible_candles = st.selectbox(
+        "Nombre de chandeliers à afficher",
+        options=[150, 200, 300, 500],
+        index=0,
+        key="visible_candles_selector"
+    )
+
+    st.write(
+        f"Nombre de chandeliers disponibles : {len(chart_df)}"
+    )
+
     if len(chart_df) >= visible_candles:
         fig.update_xaxes(
             range=[
