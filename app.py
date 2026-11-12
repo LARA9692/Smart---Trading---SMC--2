@@ -329,10 +329,18 @@ if selected_tf in data:
 
     # REGLAGE DU NOMBRE DE CHANDELIERS VISIBLES
 
+    
     visible_candles = st.selectbox(
         "Nombre de chandeliers à afficher",
-        [150, 200, 300, 500],
-        index=0
+        options=[150, 200, 300, 500],
+        index=0,
+        key="visible_candles_selector"
+    )
+
+    st.write(
+        f"Nombre de chandeliers disponibles : {len(chart_df)}"
+    )
+
     )
 
     if len(chart_df) >= visible_candles:
