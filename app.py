@@ -324,12 +324,11 @@ if selected_tf in data:
         xaxis_rangeslider_visible=False
     )
 
-    fig.update_yaxes(title_text="Prix", row=1, col=1)
+        fig.update_yaxes(title_text="Prix", row=1, col=1)
     fig.update_yaxes(title_text="Volume", row=2, col=1)
 
     # REGLAGE DU NOMBRE DE CHANDELIERS VISIBLES
 
-    
     visible_candles = st.selectbox(
         "Nombre de chandeliers à afficher",
         options=[150, 200, 300, 500],
